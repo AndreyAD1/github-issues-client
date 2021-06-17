@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"gopl.io/ch4/github"
 )
 
 func main() {
-	getRepoIssuesURL := "https://api.github.com/repos/octocat/hello-world/issues"
+	if len(os.Args) != 2 {
+		fmt.Println("The script requires a URL as a positional argument")
+		return
+	}
+	getRepoIssuesURL := os.Args[1]
 	request, err := http.NewRequest("GET", getRepoIssuesURL, nil)
 	if err != nil {
 		fmt.Println(err)
