@@ -17,16 +17,29 @@ func main() {
 	request.Header.Set("Accept", "application/vnd.github.v3+json")
 	response, err := http.DefaultClient.Do(request)
 
+	if err != nil {
+		fmt.Println("Can not download issues")
+		return
+	}
+
 	if response.StatusCode != http.StatusOK {
 		response.Body.Close()
 		fmt.Printf("search query failed: %s", response.Status)
 	}
 
-	var result []github.Issue
-	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+	var issues []github.Issue
+	if err := json.NewDecoder(response.Body).Decode(&issues); err != nil {
 		response.Body.Close()
 		fmt.Println(err)
 	}
 	response.Body.Close()
-	fmt.Println(result)
+	fmt.Printf("Total issue number: %d", len(issues))
+	for i, issue := range issues {
+		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
+		if err != nil {
+			fmt.Printf("Can not prettify the issue number %d", issue.Number)
+		}
+		fmt.Printf("\nIssue no. %d\n", i)
+		fmt.Println(string(prettyIssue))
+	}
 }
