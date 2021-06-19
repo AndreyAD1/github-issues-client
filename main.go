@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"os"
 
 	"gopl.io/ch4/github"
 )
@@ -15,16 +14,16 @@ func main() {
 	password := flag.String("password", "", "a Github user password")
 	ownerName := flag.String("owner", "", "owner of Github repository")
 	repoName := flag.String("repo", "", "repository name")
-	command := flag.String("command", "", "an action name script should do")
+	command := flag.String("command", "", "an action script should do")
 
 	flag.Parse()
 
-	argumentPerName := map[string]string {
-		"user": *userName,
+	argumentPerName := map[string]string{
+		"user":     *userName,
 		"password": *password,
-		"owner": *ownerName,
-		"repo": *repoName,
-		"command": *command,
+		"owner":    *ownerName,
+		"repo":     *repoName,
+		"command":  *command,
 	}
 	var inputError string
 	for name, value := range argumentPerName {
@@ -36,8 +35,16 @@ func main() {
 		fmt.Println(inputError)
 		return
 	}
+	if *command != "repo-issues" {
+		fmt.Println("Only 'repo_issues' command has been implemented yet")
+		return
+	}
 
-	getRepoIssuesURL := os.Args[1]
+	getRepoIssuesURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/issues",
+		*ownerName,
+		*repoName)
+
 	request, err := http.NewRequest("GET", getRepoIssuesURL, nil)
 	if err != nil {
 		fmt.Println(err)
