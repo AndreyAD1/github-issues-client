@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,10 +11,32 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("The script requires a repo URL as an argument")
+	userName := flag.String("user", "", "a GitHub user name")
+	password := flag.String("password", "", "a Github user password")
+	ownerName := flag.String("owner", "", "owner of Github repository")
+	repoName := flag.String("repo", "", "repository name")
+	command := flag.String("command", "", "an action name script should do")
+
+	flag.Parse()
+
+	argumentPerName := map[string]string {
+		"user": *userName,
+		"password": *password,
+		"owner": *ownerName,
+		"repo": *repoName,
+		"command": *command,
+	}
+	var inputError string
+	for name, value := range argumentPerName {
+		if value == "" {
+			inputError += "The script requires an argument " + name + "\n"
+		}
+	}
+	if inputError != "" {
+		fmt.Println(inputError)
 		return
 	}
+
 	getRepoIssuesURL := os.Args[1]
 	request, err := http.NewRequest("GET", getRepoIssuesURL, nil)
 	if err != nil {
