@@ -5,12 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"gopl.io/ch4/github"
 )
 
-const gitHubAPIURL = "https://api.github.com"
+const (
+	gitHubAPIURL    = "https://api.github.com"
+	createIssueHelp = "https://docs.github.com/en/rest/reference/issues#create-an-issue"
+)
 
 func getRepositoryIssues(ownerName string, repoName string) (
 	[]github.Issue, error) {
@@ -53,7 +57,7 @@ func printRepositoryIssues(issues []github.Issue) {
 		if err != nil {
 			fmt.Printf("Can not prettify the issue number %d", issue.Number)
 		}
-		fmt.Printf("\nIssue no. %d\n", i)
+		fmt.Printf("\nIssue no. %d\n", i+1)
 		fmt.Println(string(prettyIssue))
 	}
 }
@@ -62,7 +66,8 @@ func createIssue(
 	username string,
 	password string,
 	ownerName string,
-	repoName string) (github.Issue, error) {
+	repoName string,
+	jsonIssueProperties string) (github.Issue, error) {
 	createIssueURL := fmt.Sprintf(
 		"%s/repos/%s/%s/issues",
 		gitHubAPIURL,
@@ -70,8 +75,7 @@ func createIssue(
 		repoName,
 	)
 	var issue github.Issue
-	requestBody := "{\"title\": \"script test 2\"}"
-	bodyReader := strings.NewReader(requestBody)
+	bodyReader := strings.NewReader(jsonIssueProperties)
 	request, err := http.NewRequest("POST", createIssueURL, bodyReader)
 	if err != nil {
 		return issue, err
@@ -103,7 +107,12 @@ func main() {
 	password := flag.String("password", "", "a Github user password")
 	ownerName := flag.String("owner", "", "owner of Github repository")
 	repoName := flag.String("repo", "", "repository name")
-	command := flag.String("command", "", "an action script should do")
+	_ = flag.NewFlagSet("repo-issues", flag.ExitOnError)
+	createIssueCmd := flag.NewFlagSet("create-issue", flag.ExitOnError)
+	issueProperties := createIssueCmd.String(
+		"issue-props",
+		"",
+		fmt.Sprintf("issue properties in JSON format. See: %s", createIssueHelp))
 
 	flag.Parse()
 
@@ -112,7 +121,6 @@ func main() {
 		"password": *password,
 		"owner":    *ownerName,
 		"repo":     *repoName,
-		"command":  *command,
 	}
 	var inputError string
 	for name, value := range argumentPerName {
@@ -124,7 +132,11 @@ func main() {
 		fmt.Println(inputError)
 		return
 	}
-	switch *command {
+	if len(os.Args) < 10 {
+		fmt.Println("expected 'repo-issues' or 'create-issue' subcommands")
+		os.Exit(1)
+	}
+	switch os.Args[9] {
 	case "repo-issues":
 		issues, err := getRepositoryIssues(*ownerName, *repoName)
 		if err != nil {
@@ -133,7 +145,19 @@ func main() {
 		}
 		printRepositoryIssues(issues)
 	case "create-issue":
-		issue, err := createIssue(*userName, *password, *ownerName, *repoName)
+		createIssueCmd.Parse(os.Args[10:])
+		fmt.Println(createIssueCmd.Args())
+		if *issueProperties == "" {
+			fmt.Println("'create-issue' requires 'issue-props' parameter")
+			return
+		}
+		issue, err := createIssue(
+			*userName,
+			*password,
+			*ownerName,
+			*repoName,
+			*issueProperties,
+		)
 		if err != nil {
 			fmt.Printf("ERROR: %s", err)
 			return
@@ -144,6 +168,6 @@ func main() {
 		}
 		fmt.Printf("Created issue:\n%s", string(prettyIssue))
 	default:
-		fmt.Println("Only 'repo-issues' command has been implemented yet")
+		fmt.Printf("Command %s is not implemented", os.Args[9])
 	}
 }
