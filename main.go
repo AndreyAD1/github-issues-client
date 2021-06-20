@@ -9,6 +9,39 @@ import (
 	"gopl.io/ch4/github"
 )
 
+func getRepositoryIssues(ownerName string, repoName string) (
+	[]github.Issue, error) {
+	getRepoIssuesURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/issues",
+		ownerName,
+		repoName)
+
+	var issues []github.Issue
+	request, err := http.NewRequest("GET", getRepoIssuesURL, nil)
+	if err != nil {
+		return issues, err
+	}
+	request.Header.Set("Accept", "application/vnd.github.v3+json")
+	response, err := http.DefaultClient.Do(request)
+
+	if err != nil {
+		return issues, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
+		err := fmt.Errorf("HTTP error: %s", response.Status)
+		return issues, err
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&issues); err != nil {
+		response.Body.Close()
+		return issues, err
+	}
+	response.Body.Close()
+	return issues, nil
+}
+
 func main() {
 	userName := flag.String("user", "", "a GitHub user name")
 	password := flag.String("password", "", "a Github user password")
@@ -36,38 +69,15 @@ func main() {
 		return
 	}
 	if *command != "repo-issues" {
-		fmt.Println("Only 'repo_issues' command has been implemented yet")
+		fmt.Println("Only 'repo-issues' command has been implemented yet")
+		return
+	}
+	issues, err := getRepositoryIssues(*ownerName, *repoName)
+	if err != nil {
+		fmt.Printf("ERROR: %s", err)
 		return
 	}
 
-	getRepoIssuesURL := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues",
-		*ownerName,
-		*repoName)
-
-	request, err := http.NewRequest("GET", getRepoIssuesURL, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	request.Header.Set("Accept", "application/vnd.github.v3+json")
-	response, err := http.DefaultClient.Do(request)
-
-	if err != nil {
-		fmt.Println("Can not download issues")
-		return
-	}
-
-	if response.StatusCode != http.StatusOK {
-		response.Body.Close()
-		fmt.Printf("search query failed: %s", response.Status)
-	}
-
-	var issues []github.Issue
-	if err := json.NewDecoder(response.Body).Decode(&issues); err != nil {
-		response.Body.Close()
-		fmt.Println(err)
-	}
-	response.Body.Close()
 	fmt.Printf("Total issue number: %d", len(issues))
 	for i, issue := range issues {
 		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
