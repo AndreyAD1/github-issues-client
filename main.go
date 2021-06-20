@@ -5,14 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"gopl.io/ch4/github"
 )
 
+const gitHubAPIURL = "https://api.github.com"
+
 func getRepositoryIssues(ownerName string, repoName string) (
 	[]github.Issue, error) {
 	getRepoIssuesURL := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues",
+		"%s/repos/%s/%s/issues",
+		gitHubAPIURL,
 		ownerName,
 		repoName)
 
@@ -54,6 +58,46 @@ func printRepositoryIssues(issues []github.Issue) {
 	}
 }
 
+func createIssue(
+	username string,
+	password string,
+	ownerName string,
+	repoName string) (github.Issue, error) {
+	createIssueURL := fmt.Sprintf(
+		"%s/repos/%s/%s/issues",
+		gitHubAPIURL,
+		ownerName,
+		repoName,
+	)
+	var issue github.Issue
+	requestBody := "{\"title\": \"script test 2\"}"
+	bodyReader := strings.NewReader(requestBody)
+	request, err := http.NewRequest("POST", createIssueURL, bodyReader)
+	if err != nil {
+		return issue, err
+	}
+	request.Header.Set("Accept", "application/vnd.github.v3+json")
+	request.SetBasicAuth(username, password)
+	response, err := http.DefaultClient.Do(request)
+
+	if err != nil {
+		return issue, err
+	}
+
+	if response.StatusCode != http.StatusCreated {
+		response.Body.Close()
+		err := fmt.Errorf("HTTP error: %s", response.Status)
+		return issue, err
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&issue); err != nil {
+		response.Body.Close()
+		return issue, err
+	}
+	response.Body.Close()
+	return issue, nil
+}
+
 func main() {
 	userName := flag.String("user", "", "a GitHub user name")
 	password := flag.String("password", "", "a Github user password")
@@ -88,6 +132,17 @@ func main() {
 			return
 		}
 		printRepositoryIssues(issues)
+	case "create-issue":
+		issue, err := createIssue(*userName, *password, *ownerName, *repoName)
+		if err != nil {
+			fmt.Printf("ERROR: %s", err)
+			return
+		}
+		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
+		if err != nil {
+			fmt.Printf("Can not prettify the created issue %v\n", issue)
+		}
+		fmt.Printf("Created issue:\n%s", string(prettyIssue))
 	default:
 		fmt.Println("Only 'repo-issues' command has been implemented yet")
 	}
