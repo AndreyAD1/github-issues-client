@@ -42,6 +42,18 @@ func getRepositoryIssues(ownerName string, repoName string) (
 	return issues, nil
 }
 
+func printRepositoryIssues(issues []github.Issue) {
+	fmt.Printf("Total issue number: %d", len(issues))
+	for i, issue := range issues {
+		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
+		if err != nil {
+			fmt.Printf("Can not prettify the issue number %d", issue.Number)
+		}
+		fmt.Printf("\nIssue no. %d\n", i)
+		fmt.Println(string(prettyIssue))
+	}
+}
+
 func main() {
 	userName := flag.String("user", "", "a GitHub user name")
 	password := flag.String("password", "", "a Github user password")
@@ -68,23 +80,15 @@ func main() {
 		fmt.Println(inputError)
 		return
 	}
-	if *command != "repo-issues" {
-		fmt.Println("Only 'repo-issues' command has been implemented yet")
-		return
-	}
-	issues, err := getRepositoryIssues(*ownerName, *repoName)
-	if err != nil {
-		fmt.Printf("ERROR: %s", err)
-		return
-	}
-
-	fmt.Printf("Total issue number: %d", len(issues))
-	for i, issue := range issues {
-		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
+	switch *command {
+	case "repo-issues":
+		issues, err := getRepositoryIssues(*ownerName, *repoName)
 		if err != nil {
-			fmt.Printf("Can not prettify the issue number %d", issue.Number)
+			fmt.Printf("ERROR: %s", err)
+			return
 		}
-		fmt.Printf("\nIssue no. %d\n", i)
-		fmt.Println(string(prettyIssue))
+		printRepositoryIssues(issues)
+	default:
+		fmt.Println("Only 'repo-issues' command has been implemented yet")
 	}
 }
