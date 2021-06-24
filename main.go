@@ -102,6 +102,32 @@ func createIssue(
 	return issue, nil
 }
 
+func getEditorOutput() (string, error) {
+	file, err := os.CreateTemp(os.TempDir(), "*")
+	if err != nil {
+		return "Can not create a temporary file", err
+	}
+	filename := file.Name()
+	defer os.Remove(filename)
+	
+	if err = file.Close(); err != nil {
+		errMsg := fmt.Sprintf(
+			"A temporary file %s is already open",
+			filename,
+		)
+		return errMsg, err
+	}
+	if err = openFileInEditor(); err != nil {
+		return "Text editor error", err
+	}
+	bytes, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Sprintf("Can not read the file %s", filename), err
+	}
+	
+	return string(bytes), nil
+}
+
 func main() {
 	userName := flag.String("user", "", "a GitHub user name")
 	password := flag.String("password", "", "a Github user password")
@@ -109,10 +135,6 @@ func main() {
 	repoName := flag.String("repo", "", "repository name")
 	_ = flag.NewFlagSet("repo-issues", flag.ExitOnError)
 	createIssueCmd := flag.NewFlagSet("create-issue", flag.ExitOnError)
-	issueProperties := createIssueCmd.String(
-		"issue-props",
-		"",
-		fmt.Sprintf("issue properties in JSON format. See: %s", createIssueHelp))
 
 	flag.Parse()
 
@@ -146,9 +168,9 @@ func main() {
 		printRepositoryIssues(issues)
 	case "create-issue":
 		createIssueCmd.Parse(os.Args[10:])
-		fmt.Println(createIssueCmd.Args())
-		if *issueProperties == "" {
-			fmt.Println("'create-issue' requires 'issue-props' parameter")
+		issueProperties, err := getEditorOutput()
+		if err != nil {
+			fmt.Println(issueProperties, err)
 			return
 		}
 		issue, err := createIssue(
@@ -156,7 +178,7 @@ func main() {
 			*password,
 			*ownerName,
 			*repoName,
-			*issueProperties,
+			issueProperties,
 		)
 		if err != nil {
 			fmt.Printf("ERROR: %s", err)
