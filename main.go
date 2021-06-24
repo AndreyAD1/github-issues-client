@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 
 	"gopl.io/ch4/github"
@@ -102,6 +103,22 @@ func createIssue(
 	return issue, nil
 }
 
+func openFileInEditor(string) error {
+	editorName := os.Getenv("EDITOR")
+	if editorName == "" {
+		editorName = "vim"
+	}
+	executable, err := exec.LookPath(editorName)
+	if err != nil {
+		return err
+	}
+	command := exec.Command(executable)
+	command.Stdin = os.Stdin
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	return command.Run()
+}
+
 func getEditorOutput() (string, error) {
 	file, err := os.CreateTemp(os.TempDir(), "*")
 	if err != nil {
@@ -117,7 +134,7 @@ func getEditorOutput() (string, error) {
 		)
 		return errMsg, err
 	}
-	if err = openFileInEditor(); err != nil {
+	if err = openFileInEditor(filename); err != nil {
 		return "Text editor error", err
 	}
 	bytes, err := os.ReadFile(filename)
@@ -173,6 +190,7 @@ func main() {
 			fmt.Println(issueProperties, err)
 			return
 		}
+		fmt.Println(issueProperties)
 		issue, err := createIssue(
 			*userName,
 			*password,
