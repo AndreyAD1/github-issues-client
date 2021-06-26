@@ -103,6 +103,48 @@ func createIssue(
 	return issue, nil
 }
 
+func updateIssue(
+	username string,
+	password string,
+	ownerName string,
+	repoName string,
+	issueNumber uint64,
+	jsonIssueProperties string) (github.Issue, error) {
+	createIssueURL := fmt.Sprintf(
+		"%s/repos/%s/%s/issues/%d",
+		gitHubAPIURL,
+		ownerName,
+		repoName,
+		issueNumber,
+	)
+	var issue github.Issue
+	bodyReader := strings.NewReader(jsonIssueProperties)
+	request, err := http.NewRequest("PATCH", createIssueURL, bodyReader)
+	if err != nil {
+		return issue, err
+	}
+	request.Header.Set("Accept", "application/vnd.github.v3+json")
+	request.SetBasicAuth(username, password)
+	response, err := http.DefaultClient.Do(request)
+
+	if err != nil {
+		return issue, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
+		err := fmt.Errorf("HTTP error: %s", response.Status)
+		return issue, err
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&issue); err != nil {
+		response.Body.Close()
+		return issue, err
+	}
+	response.Body.Close()
+	return issue, nil
+}
+
 func openFileInEditor(filename string) error {
 	editorName := os.Getenv("EDITOR")
 	if editorName == "" {
@@ -152,6 +194,8 @@ func main() {
 	repoName := flag.String("repo", "", "repository name")
 	_ = flag.NewFlagSet("repo-issues", flag.ExitOnError)
 	createIssueCmd := flag.NewFlagSet("create-issue", flag.ExitOnError)
+	updateIssueCmd := flag.NewFlagSet("update-issue", flag.ExitOnError)
+	issueNumber := updateIssueCmd.Uint64("issue-number", 0, "An issue number")
 
 	flag.Parse()
 
@@ -190,12 +234,39 @@ func main() {
 			fmt.Println(issueProperties, err)
 			return
 		}
-		fmt.Println(issueProperties)
 		issue, err := createIssue(
 			*userName,
 			*password,
 			*ownerName,
 			*repoName,
+			issueProperties,
+		)
+		if err != nil {
+			fmt.Printf("ERROR: %s", err)
+			return
+		}
+		prettyIssue, err := json.MarshalIndent(issue, "", "\t")
+		if err != nil {
+			fmt.Printf("Can not prettify the created issue %v\n", issue)
+		}
+		fmt.Printf("Created issue:\n%s", string(prettyIssue))
+	case "update-issue":
+		updateIssueCmd.Parse(os.Args[10:])
+		if *issueNumber == 0 {
+			fmt.Println("Add 'issue-number' argument")
+			return
+		}
+		issueProperties, err := getEditorOutput()
+		if err != nil {
+			fmt.Println(issueProperties, err)
+			return
+		}
+		issue, err := updateIssue(
+			*userName,
+			*password,
+			*ownerName,
+			*repoName,
+			*issueNumber,
 			issueProperties,
 		)
 		if err != nil {
