@@ -192,8 +192,8 @@ func main() {
 	password := flag.String("password", "", "a Github user password")
 	ownerName := flag.String("owner", "", "owner of Github repository")
 	repoName := flag.String("repo", "", "repository name")
-	_ = flag.NewFlagSet("repo-issues", flag.ExitOnError)
-	createIssueCmd := flag.NewFlagSet("create-issue", flag.ExitOnError)
+	_ = flag.String("repo-issues", "", "command to list repository issues")
+	_ = flag.String("create-issue", "", "command to create an issue")
 	updateIssueCmd := flag.NewFlagSet("update-issue", flag.ExitOnError)
 	issueNumber := updateIssueCmd.Uint64("issue-number", 0, "An issue number")
 
@@ -228,7 +228,6 @@ func main() {
 		}
 		printRepositoryIssues(issues)
 	case "create-issue":
-		createIssueCmd.Parse(os.Args[10:])
 		issueProperties, err := getEditorOutput()
 		if err != nil {
 			fmt.Println(issueProperties, err)
