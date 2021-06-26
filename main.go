@@ -103,7 +103,7 @@ func createIssue(
 	return issue, nil
 }
 
-func openFileInEditor(string) error {
+func openFileInEditor(filename string) error {
 	editorName := os.Getenv("EDITOR")
 	if editorName == "" {
 		editorName = "vim"
@@ -112,7 +112,7 @@ func openFileInEditor(string) error {
 	if err != nil {
 		return err
 	}
-	command := exec.Command(executable)
+	command := exec.Command(executable, filename)
 	command.Stdin = os.Stdin
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
